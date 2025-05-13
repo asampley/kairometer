@@ -1,6 +1,8 @@
 import type { WeatherApiResponse } from '@openmeteo/sdk/weather-api-response';
 import type { Rule } from './rules.svelte'
+import type { ForecastSettings } from './settings.svelte';
 
+import { Unit } from '@openmeteo/sdk/unit';
 import { fetchWeatherApi } from 'openmeteo';
 
 export type Result<T, E> = { ok: T } | { err: E };
@@ -38,21 +40,23 @@ export const hourlyVariables: string[] = [
 	"is_day",
 ]
 
-export const no_default = (f: () => any): (_: Event) => void => {
+export const no_default = (f: (event: Event) => any): (_: Event) => void => {
 	return (event: Event) => {
 		event.preventDefault();
 
-		f()
+		f(event)
 	}
 }
 
-export function get_forecast(hourly: string[]): Promise<WeatherApiResponse[]> {
+export function get_forecast(hourly: string[], forecast_settings: ForecastSettings): Promise<WeatherApiResponse[]> {
 	const params = {
-		latitude: 53.5501,
-		longitude: -113.4687,
+		latitude: forecast_settings.latitude,
+		longitude: forecast_settings.longitude,
 		hourly: hourly,
 		timezone: "auto",
 		format: "flatbuffers",
+		forecast_days: forecast_settings.forecast_days,
+		past_days: forecast_settings.past_days,
 	};
 
 	let url = "https://api.open-meteo.com/v1/forecast";
@@ -82,11 +86,11 @@ export function collect_stats(rules: Rule[], variables: string[], forecast: Weat
 
 		let violation = { name: rule.name, total_minutes: 0 };
 
-		if (i !== null) {
+		if (i !== undefined) {
 			forecast.hourly()?.variables(i)?.valuesArray()?.forEach(
 				(value) => {
-					if ((rule.greater_than !== null && value > rule.greater_than)
-						|| (rule.less_than !== null && value < rule.less_than)
+					if ((rule.greater_than !== undefined && value > rule.greater_than)
+						|| (rule.less_than !== undefined && value < rule.less_than)
 					) {
 						violation.total_minutes += 15;
 					}
@@ -104,6 +108,142 @@ export function collect_stats(rules: Rule[], variables: string[], forecast: Weat
 	return stats;
 }
 
-export function graph_data(i: number, forecast: WeatherApiResponse): [number, number][] {
-	return forecast.hourly()?.variables(i)?.valuesArray()?.values().map((v, i) => [i, v] as [number, number]).toArray() || [];
+export function graph_data(i: number, forecast: WeatherApiResponse): [Date, number][] {
+	const hourly = forecast.hourly();
+
+	if (hourly === null) {
+		return [];
+	}
+
+	const utcOffsetSeconds = forecast.utcOffsetSeconds();
+
+	const values = hourly.variables(i)?.valuesArray()?.values();
+
+	return values?.map((v, i) => [new Date((Number(hourly.time()) + i * hourly.interval()) * 1000), v] as [Date, number]).toArray() || [];
+}
+
+export function graph_unit(i: number, forecast: WeatherApiResponse): Unit | undefined {
+	return forecast.hourly()?.variables(i)?.unit();
+}
+
+export function unit_short(unit: Unit): string {
+	switch (unit) {
+		case Unit.undefined: return "undefined";
+		case Unit.celsius: return "°C";
+		case Unit.fahrenheit: return "°F";
+		case Unit.kelvin: return "°K";
+		case Unit.kilometres_per_hour: return "km/h";
+		case Unit.miles_per_hour: return "mp/h";
+		case Unit.knots: return "kn";
+		case Unit.metre_per_second: return "m/s";
+		case Unit.metre_per_second_not_unit_converted: return "m/s";
+		case Unit.millimetre: return "mm";
+		case Unit.centimetre: return "cm";
+		case Unit.inch: return "inch";
+		case Unit.feet: return "ft";
+		case Unit.metre: return "m";
+		case Unit.geopotential_metre: return "gpm";
+		case Unit.percentage: return "%";
+		case Unit.hectopascal: return "hPa";
+		case Unit.pascal: return "Pa";
+		case Unit.degree_direction: return "°";
+		case Unit.wmo_code: return "wmo code";
+		case Unit.watt_per_square_metre: return "W/m²";
+		case Unit.kilogram_per_square_metre: return "kg/m²";
+		case Unit.gram_per_kilogram: return "g/kg";
+		case Unit.per_second: return "s⁻¹";
+		case Unit.seconds: return "s";
+		case Unit.cubic_metre_per_cubic_metre: return "m³/m³";
+		case Unit.cubic_metre_per_second: return "m³/s";
+		case Unit.kilopascal: return "kPa";
+		case Unit.megajoule_per_square_metre: return "MJ/m²";
+		case Unit.joule_per_kilogram: return "J/kg";
+		case Unit.hours: return "h";
+		case Unit.iso8601: return "iso8601";
+		case Unit.unix_time: return "unixtime";
+		case Unit.micrograms_per_cubic_metre: return "μg/m³";
+		case Unit.grains_per_cubic_metre: return "grains/m³";
+		case Unit.dimensionless: return "";
+		case Unit.dimensionless_integer: return "";
+		case Unit.european_air_quality_index: return "EAQI";
+		case Unit.us_air_quality_index: return "USAQI";
+		case Unit.gdd_celsius: return "GGDc";
+		case Unit.fraction: return "fraction";
+		case Unit.parts_per_million: return "ppm";
+	}
+}
+
+export function fixed_fractional_digits(unit: Unit): number {
+	switch (unit) {
+		case Unit.undefined: return 0;
+		case Unit.celsius: return 1;
+		case Unit.fahrenheit: return 1;
+		case Unit.kelvin: return 1;
+		case Unit.kilometres_per_hour: return 1;
+		case Unit.miles_per_hour: return 1;
+		case Unit.knots: return 1;
+		case Unit.metre_per_second: return 2;
+		case Unit.metre_per_second_not_unit_converted: return 2;
+		case Unit.millimetre: return 2;
+		case Unit.inch: return 3;
+		case Unit.feet: return 3;
+		case Unit.metre: return 2;
+		case Unit.percentage: return 0;
+		case Unit.hectopascal: return 1;
+		case Unit.degree_direction: return 0;
+		case Unit.wmo_code: return 0;
+		case Unit.watt_per_square_metre: return 1;
+		case Unit.cubic_metre_per_cubic_metre: return 3;
+		case Unit.kilopascal: return 2;
+		case Unit.megajoule_per_square_metre: return 2;
+		case Unit.hours: return 1;
+		case Unit.iso8601: return 0;
+		case Unit.unix_time: return 0;
+		case Unit.geopotential_metre: return 0;
+		case Unit.kilogram_per_square_metre: return 2;
+		case Unit.gram_per_kilogram: return 2;
+		case Unit.per_second: return 2;
+		case Unit.pascal: return 0;
+		case Unit.centimetre: return 2;
+		case Unit.seconds: return 2;
+		case Unit.micrograms_per_cubic_metre: return 1;
+		case Unit.grains_per_cubic_metre: return 1;
+		case Unit.dimensionless: return 2;
+		case Unit.dimensionless_integer: return 0;
+		case Unit.joule_per_kilogram: return 1;
+		case Unit.cubic_metre_per_second: return 2;
+		case Unit.european_air_quality_index: return 0;
+		case Unit.us_air_quality_index: return 0;
+		case Unit.gdd_celsius: return 2;
+		case Unit.fraction: return 3;
+		case Unit.parts_per_million: return 0;
+	}
+}
+
+export function format_variable(unit: Unit): (value: number) => string {
+	return (value) => value.toFixed(fixed_fractional_digits(unit)) + " " + unit_short(unit);
+}
+
+export function* date_boundaries(forecast: WeatherApiResponse): Generator<Date> {
+	const hourly = forecast.hourly();
+
+	if (hourly === null) {
+		return;
+	}
+
+	const utcOffsetSeconds = forecast.utcOffsetSeconds();
+
+	const start = new Date(new Date(Number(hourly.time()) * 1000 + utcOffsetSeconds).toDateString());
+	const end = new Date(Number(hourly.timeEnd()) * 1000 + utcOffsetSeconds);
+
+	for (let i = 0;; ++i) {
+		const date = new Date(start);
+		date.setDate(start.getDate() + i);
+
+		if (date < end) {
+			yield date;
+		} else {
+			break;
+		}
+	}
 }

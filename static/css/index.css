@@ -1,0 +1,131 @@
+:root {
+	font-family: "Andika", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 16px;
+	line-height: 24px;
+	font-weight: 400;
+
+	color: #f6f6f6;
+	background-color: #2f2f2f;
+
+	font-synthesis: none;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	-webkit-text-size-adjust: 100%;
+}
+
+h1 {
+	font-size: 4rem;
+	font-style: italic;
+	text-align: center;
+	color: #947bff;
+}
+
+a {
+	font-weight: 500;
+	color: #646cff;
+	text-decoration: inherit;
+}
+
+a:hover {
+	color: #24c8db;
+}
+
+form {
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 1rem;
+	margin-bottom: 1rem;
+}
+
+fieldset {
+	border-style: none;
+}
+
+fieldset:has(> legend) {
+	border-style: solid;
+}
+
+fieldset.row {
+	gap: 0.5rem;
+}
+
+input,
+button {
+	border-radius: 8px;
+	border: 1px solid transparent;
+	padding: 0.6em 1.2em;
+	font-size: 1em;
+	font-weight: 500;
+	font-family: inherit;
+	color: #ffffff;
+	background-color: #0f0f0f98;
+	transition: border-color 0.25s;
+	box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+	outline: none;
+}
+
+button {
+	cursor: pointer;
+}
+button:hover {
+	border-color: #396cd8;
+}
+button:active {
+	border-color: #396cd8;
+	background-color: #0f0f0f69;
+}
+
+@media (prefers-color-scheme: light) {
+	:root {
+		color: #0f0f0f;
+		background-color: #f6f6f6;
+	}
+
+	a:hover {
+		color: #535bf2;
+	}
+
+	input,
+	button {
+		color: #0f0f0f;
+		background-color: #ffffff;
+	}
+	button:active {
+		background-color: #e8e8e8;
+	}
+}
+
+.container {
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	text-align: center;
+}
+
+.row {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.error {
+	font-style: italic;
+	color: hotpink;
+}
+
+.warning {
+	font-style: italic;
+	color: yellow;
+}
+
+nav {
+	font-size: 2rem;
+	margin-top: 1rem;
+	margin-bottom: 1rem;
+
+	display: flex;
+	flex-direction: row;
+	gap: 0.5em;
+}

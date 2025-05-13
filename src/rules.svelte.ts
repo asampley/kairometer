@@ -1,4 +1,4 @@
-export const rules: Rule[] = $state([]);
+export const rules: Rule[] = $state(load_rules());
 
 export interface Rule {
 	name: string,
@@ -9,13 +9,15 @@ export interface Rule {
 
 export function add_rule(
 	name: string,
-	variable?: string,
+	variable: string = "",
 	greater_than?: number,
 	less_than?: number
 ) {
 	rules.push({
 		name: name,
-		variable: variable || "",
+		variable: variable ,
+		greater_than: greater_than,
+		less_than: less_than,
 	});
 	save_rules();
 }
@@ -32,17 +34,15 @@ export function load_rules() {
 		const loadedRules = JSON.parse(fromStorage);
 
 		if (loadedRules instanceof Array) {
-			rules.splice(0, rules.length);
-
-			rules.push(...JSON.parse(fromStorage));
-
-			return;
+			return loadedRules;
 		}
 	}
 
 	// Default
-	rules.push({ name: "High Pressure", variable: "surface_pressure", greater_than: 1000 });
-	rules.push({ name: "Rain", variable: "rain", greater_than: 1 });
+	return [
+		{ name: "High Pressure", variable: "surface_pressure", greater_than: 1000 },
+		{ name: "Rain", variable: "rain", greater_than: 1 },
+	];
 }
 
 export function save_rules() {

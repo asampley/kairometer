@@ -96,6 +96,7 @@
 						rustfmt
 						svelte-language-server
 						typescript-language-server
+						jmtpfs
 					];
 
 					WEBKIT_DISABLE_DMABUF_RENDERER = "1";
