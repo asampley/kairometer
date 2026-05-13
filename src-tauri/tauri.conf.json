@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "kairometer",
   "version": "0.1.0",
-  "identifier": "com.kairometer.app",
+  "identifier": "ca.asampley.kairometer",
   "build": {
     "beforeDevCommand": "pnpm dev && pnpm tauri icon static/icon.svg",
     "devUrl": "http://localhost:1420",

@@ -6,6 +6,9 @@
 # will have schema files for capabilities auto-completion
 /gen/schemas
 
+# Required to lock target version and work with nix
+!/gen/android/app/*
+
 # Added to generation in build process
 /icons
 /gen/android/app/src/main/res/mipmap-*/*.png

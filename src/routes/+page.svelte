@@ -5,15 +5,22 @@
 	import { onMount } from "svelte";
 	import { collect_stats, date_boundaries, format_variable, get_forecast, graph_data, graph_unit, no_default, unit_short } from "../main";
 	import { rules } from "../rules.svelte";
-	import { forecast_settings } from "../settings.svelte";
+	import { forecast_settings, locations } from "../settings.svelte";
 
 	import Title from "../components/Title.svelte";
 	import Nav from "../components/Nav.svelte";
 	import Graph from "../components/Graph.svelte";
 
+	// TODO service workers
+	//import "../workers.ts";
+
 	const variables = $derived(rules.map((v) => v.variable));
 
-	let forecast: Result<WeatherApiResponse, any> | null = $state(null);
+	let forecasts: (Result<WeatherApiResponse, any> | null)[] = $state(locations.map(() => null));
+
+	let location_i: number = $state(0);
+
+	let forecast: Result<WeatherApiResponse, any> | null = $derived(forecasts[location_i]);
 
 	let stats: Stats | null = $derived(forecast && "ok" in forecast ? collect_stats(rules, variables, forecast.ok) : null);
 	let graphs = $derived(forecast && "ok" in forecast
@@ -25,15 +32,11 @@
 
 	async function update_forecast() {
 		try {
-			const next = await get_forecast(variables, forecast_settings);
+			const next = await get_forecast(variables, forecast_settings, locations[location_i]);
 
-			forecast = { ok: next[0] };
+			forecasts[location_i] = { ok: next[0] };
 		} catch (e) {
-			forecast = { err: e };
-		}
-
-		if (Notification.permission === "granted") {
-			new Notification("Kairometer", { body: "Forecast updated!", icon: "/icon.svg" });
+			forecasts[location_i] = { err: e };
 		}
 	}
 
@@ -51,14 +54,28 @@
 		return () => clearInterval(id);
 	});
 
+	$effect(() => {
+		if (forecasts[location_i] == null) {
+			update_forecast()
+		}
+	});
+
+	$effect(() => {
+		if (stats != null && stats.violations.length > 0 && Notification.permission === "granted") {
+			var body = "Warnings:";
+			for (var violation of stats.violations) {
+				body += "\n" + violation.name;
+			}
+			new Notification("Kairometer", { body: body, icon: "/icon.svg" });
+		}
+	})
+
 	const markX = $derived([
 		{ color: "#333333", values: dateMarkers },
 		{ color: "green", values: [now] },
 	]);
 
 	onMount(async () => {
-		await update_forecast();
-
 		if (Notification.permission !== "denied") {
 			await Notification.requestPermission();
 		}
@@ -69,10 +86,16 @@
 	<Title/>
 	<Nav/>
 
+	<select bind:value={location_i}>
+		{#each locations as location, i}
+			<option value={i}>{location.name}</option>
+		{/each}
+	</select>
+
 	{#if !forecast}
 		<p>Loading...</p>
 	{:else if 'ok' in forecast}
-		{#if stats.violations.length > 0}
+		{#if stats != null && stats.violations.length > 0}
 			<h3>Warnings</h3>
 			<ul class="warning">
 				{#each stats.violations as violation}

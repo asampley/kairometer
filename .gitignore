@@ -9,6 +9,3 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 /static/favicon.png
-
-# currently no changes made to default setup
-/src-tauri/gen

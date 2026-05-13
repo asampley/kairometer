@@ -4,7 +4,22 @@
 	import Nav from "../../components/Nav.svelte";
 
 	import { rules, add_rule, remove_rule, save_rules } from "../../rules.svelte";
-	import { forecast_settings, save_forecast_settings } from "../../settings.svelte";
+	import { forecast_settings, locations, save_forecast_settings, save_locations } from "../../settings.svelte";
+
+	function add_location() {
+		locations.push({
+			name: "New location",
+			longitude: 0,
+			latitude: 0,
+		});
+
+		save_locations();
+	}
+
+	function remove_location(i: number) {
+		locations.splice(i, 1);
+		save_locations();
+	}
 </script>
 
 <main class="container">
@@ -31,15 +46,34 @@
 		<fieldset>
 			<legend>Forecast</legend>
 			<fieldset>
-				<label for="latitude">Latitude</label><br>
-				<input id="latitude" type="text" bind:value={forecast_settings.latitude} placeholder="53.5501," onblur={save_forecast_settings}><br>
-				<label for="longitude">Longitude</label><br>
-				<input id="longitude" type="text" bind:value={forecast_settings.longitude} placeholder="-113.4687" onblur={save_forecast_settings}><br>
 				<label for="past_days">Past Days</label><br>
 				<input id="past_days" type="number" bind:value={forecast_settings.past_days} placeholder="0" onblur={save_forecast_settings}><br>
 				<label for="forecast_days">Forecast Days</label><br>
 				<input id="forecast_days" type="number" bind:value={forecast_settings.forecast_days} placeholder="7" onblur={save_forecast_settings}><br>
 			</fieldset>
+		</fieldset>
+	</form>
+	<form>
+		<fieldset>
+			<legend>Locations</legend>
+			{#each locations as location, i (location)}
+				<fieldset class="row">
+					<div>
+						<label for={"location-" + i + "-name"}>Name</label><br>
+						<input id={"location-" + i + "-name"} type="text" bind:value={location.name} placeholder="Name" onblur={save_locations}>
+					</div>
+					<div>
+						<label for={"location-" + i + "-latitude"}>Latitude</label><br>
+						<input id={"location-" + i + "-latitude"} type="text" bind:value={location.latitude} placeholder="Latitude" onblur={save_locations}>
+					</div>
+					<div>
+						<label for={"location-" + i + "-longitude"}>Longitude</label><br>
+						<input id={"location-" + i + "-longitude"} type="text" bind:value={location.longitude} placeholder="Longitude" onblur={save_locations}>
+					</div>
+					<button onclick={() => remove_location(i) }>X</button>
+				</fieldset>
+			{/each}
+			<button onclick={() => add_location() }>Add Location</button>
 		</fieldset>
 	</form>
 </main>

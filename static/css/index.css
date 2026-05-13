@@ -50,6 +50,11 @@ fieldset.row {
 	gap: 0.5rem;
 }
 
+/* columns */
+fieldset.row > div {
+	display: inline-block;
+}
+
 input,
 button {
 	border-radius: 8px;

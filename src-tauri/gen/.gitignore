@@ -1,0 +1,9 @@
+/*
+
+# Android inclusions
+!/android
+/android/*
+!/android/app
+/android/app/*
+# Required for version locking with nix
+!/android/app/build.gradle.kts

@@ -1,6 +1,6 @@
 import type { WeatherApiResponse } from '@openmeteo/sdk/weather-api-response';
 import type { Rule } from './rules.svelte'
-import type { ForecastSettings } from './settings.svelte';
+import type { ForecastSettings, Location } from './settings.svelte';
 
 import { Unit } from '@openmeteo/sdk/unit';
 import { fetchWeatherApi } from 'openmeteo';
@@ -48,10 +48,10 @@ export const no_default = (f: (event: Event) => any): (_: Event) => void => {
 	}
 }
 
-export function get_forecast(hourly: string[], forecast_settings: ForecastSettings): Promise<WeatherApiResponse[]> {
+export function get_forecast(hourly: string[], forecast_settings: ForecastSettings, location: Location): Promise<WeatherApiResponse[]> {
 	const params = {
-		latitude: forecast_settings.latitude,
-		longitude: forecast_settings.longitude,
+		latitude: location.latitude,
+		longitude: location.longitude,
 		hourly: hourly,
 		timezone: "auto",
 		format: "flatbuffers",
