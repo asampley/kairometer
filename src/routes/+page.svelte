@@ -3,9 +3,9 @@
 	import type { Result, Stats } from "../main";
 
 	import { onMount } from "svelte";
-	import { collect_stats, date_boundaries, format_variable, get_forecast, graph_data, graph_unit, no_default, unit_short } from "../main";
+	import { collect_stats, date_boundaries, format_variable, get_forecast, graph_data, graph_unit, no_default } from "../main";
 	import { rules } from "../rules.svelte";
-	import { forecast_settings, locations } from "../settings.svelte";
+	import { forecast_settings, graph_settings, locations } from "../settings.svelte";
 
 	import Title from "../components/Title.svelte";
 	import Nav from "../components/Nav.svelte";
@@ -14,7 +14,8 @@
 	// TODO service workers
 	//import "../workers.ts";
 
-	const variables = $derived(rules.map((v) => v.variable));
+	const variables = $derived(new Set(rules.map(v => v.variable)).union(new Set(graph_settings.flatMap(g => g.plots.map(p => p.variable)))));
+	const variablesArray = $derived(variables.values().toArray());
 
 	let forecasts: (Result<WeatherApiResponse, any> | null)[] = $state(locations.map(() => null));
 
@@ -22,17 +23,28 @@
 
 	let forecast: Result<WeatherApiResponse, any> | null = $derived(forecasts[location_i]);
 
-	let stats: Stats | null = $derived(forecast && "ok" in forecast ? collect_stats(rules, variables, forecast.ok) : null);
-	let graphs = $derived(forecast && "ok" in forecast
-		? variables.map((_, i) => graph_data(i, forecast.ok))
-		: []
-	);
+	let stats: Stats | null = $derived(forecast && "ok" in forecast ? collect_stats(rules, variablesArray, forecast.ok) : null);
+	let graphs = $derived(graph_settings.flatMap(g => { return {
+		name: g.name,
+		plots: g.plots.map(p => {
+			const variable_i = variablesArray.indexOf(p.variable);
 
-	let markers = $derived(variables.flatMap(v => rules.values().filter(r => r.variable == v).map(r => [r.greater_than, r.less_than].filter(x => x !== undefined)).toArray()));
+			return {
+				color: p.color,
+				data: forecast && "ok" in forecast ? graph_data(variable_i, forecast.ok) : [],
+				markY: !p.show_rules ? [] : rules
+					.values()
+					.filter(r => r.variable == p.variable)
+					.map(r => [r.greater_than, r.less_than].filter(x => x != undefined))
+					.toArray(),
+				format: (y: number) => p.variable + ": " + (forecast && "ok" in forecast ? format_variable(graph_unit(variable_i, forecast.ok))(y) : y.toString()),
+			}
+		}),
+	}}));
 
 	async function update_forecast() {
 		try {
-			const next = await get_forecast(variables, forecast_settings, locations[location_i]);
+			const next = await get_forecast(variables.values().toArray(), forecast_settings, locations[location_i]);
 
 			forecasts[location_i] = { ok: next[0] };
 		} catch (e) {
@@ -108,12 +120,12 @@
 			<button type="submit"><i class="fa-solid fa-rotate"></i>Refresh Forecast</button>
 		</form>
 
-		{#each graphs as data, i}
-			<h2>{variables[i].replace('_', ' ') + " (" + unit_short(graph_unit(i, forecast.ok)) + ")"}</h2>
+		{#each graphs as graph, i}
+			<h2>{graph.name}</h2>
 			<Graph
-				{data}
+				plots={graph.plots}
 				{markX}
-				markY={markers[i]}
+				markY={graph.markY}
 				formatY={format_variable(graph_unit(i, forecast.ok))}
 				width="100%"
 				height="300px"

@@ -1,3 +1,5 @@
+import { save } from "./settings.svelte";
+
 export const rules: Rule[] = $state(load_rules());
 
 export interface Rule {
@@ -15,7 +17,7 @@ export function add_rule(
 ) {
 	rules.push({
 		name: name,
-		variable: variable ,
+		variable: variable,
 		greater_than: greater_than,
 		less_than: less_than,
 	});
@@ -40,13 +42,13 @@ export function load_rules() {
 
 	// Default
 	return [
-		{ name: "High Pressure", variable: "surface_pressure", greater_than: 1000 },
 		{ name: "Rain", variable: "rain", greater_than: 1 },
+		{ name: "Snow", variable: "snowfall", greater_than: 1 },
+		{ name: "High Pressure", variable: "surface_pressure", greater_than: 1000 },
+		{ name: "Windy", variable: "wind_speed_10m", greater_than: 20 },
 	];
 }
 
 export function save_rules() {
-	console.log("Saved");
-
-	localStorage.setItem("rules", JSON.stringify(rules));
+	save("rules", rules)
 }

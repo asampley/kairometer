@@ -1,90 +1,121 @@
 <script lang="ts">
 	import PlotLine from "./PlotLine.svelte";
 
-	let { data, markX, markY, formatY, ...others }: {
-		data: [number | Date, number][],
+	let { plots, markX, ...others }: {
+		plots: { color: string, name: string, data: [number | Date, number][], markY: number[], format: (y: number) => string}[],
 		markX: { color: string, values: (number | Date)[] }[],
-		markY: number[],
-		formatY: (y: number) => string,
 	} = $props();
 
 	const dateFormatter = Intl.DateTimeFormat("en-CA", { hour12: false, month: "long", day: "numeric", "hour": "2-digit", minute: "2-digit", weekday: "short", });
 
 	let axisX: [number, number] = $derived.by(() => {
-		if (data.length == 0) {
-			return [0, 1];
-		} else {
-			return data.values().reduce(
-				(range, value) => [
-					Math.min(range[0], value[0].valueOf()),
-					Math.max(range[1], value[0].valueOf())
-				],
-				[data[0][0].valueOf(), data[0][0].valueOf()]
-			);
-		}
-	});
-	let axisY: [number, number] = $derived.by(() => {
-		if (data.length == 0) {
-			return [0, 1];
-		} else {
-			let bounds = data.values().reduce((range, value) => [Math.min(range[0], value[1]), Math.max(range[1], value[1])], [data[0][1], data[0][1]]);
+		return plots.values().reduce(
+			(acc, plot) => {
+				const data_bounds = plot.data.values().reduce<[number, number]>(
+					(range, value) => [
+						Math.min(range[0], value[0].valueOf()),
+						Math.max(range[1], value[0].valueOf())
+					],
+					[Infinity, -Infinity]
+				);
 
-			if (markY && markY.length > 0) {
-				bounds[0] = Math.min(bounds[0], ...markY);
-				bounds[1] = Math.max(bounds[1], ...markY);
+				return [
+					Math.min(data_bounds[0], acc[0]),
+					Math.max(data_bounds[1], acc[1]),
+				];
+			},
+			[Infinity, -Infinity]
+		);
+	});
+
+	// separate axis for each plot
+	let axisY: [number, number][] = $derived.by(() => plots.values().map<[number, number]>(
+		plot => {
+			const bounds = plot.data.values().reduce<[number, number]>(
+				(range, value) => [
+					Math.min(range[0], value[1]),
+					Math.max(range[1], value[1])
+				],
+				[Infinity, -Infinity]
+			);
+
+			if (plot.markY && plot.markY.length > 0) {
+				bounds[0] = Math.min(bounds[0], ...plot.markY);
+				bounds[1] = Math.max(bounds[1], ...plot.markY);
+			}
+
+			if (bounds[0] == Infinity) {
+				bounds[0] = 0;
+			}
+
+			if (bounds[1] == -Infinity) {
+				bounds[1] = 1;
+			}
+
+			if (bounds[1] == bounds[0]) {
+				bounds[1] += 1;
 			}
 
 			let delta = bounds[1] - bounds[0];
 
 			return [bounds[0] - delta * 0.1, bounds[1] + delta * 0.1];
 		}
-	});
+	).toArray());
 
 	let DX = $derived(axisX[1] - axisX[0]);
-	let DY = $derived(axisY[1] - axisY[0]);
+	let DY = $derived(axisY.map(a => a[1] - a[0]));
 
 	let width = $state(0);
 	let height = $state(0);
 
 	const normalizeX = (x: number) => (x - axisX[0]) / DX;
-	const normalizeY = (y: number) => 1 - (y - axisY[0]) / DY;
+	const normalizeY = (y: number, plot_i: number) => 1 - (y - axisY[plot_i][0]) / DY[plot_i];
 
 	let normalizedData = $derived(
-		data.values().map((v) => [normalizeX(v[0].valueOf()), normalizeY(v[1])] as [number, number]).toArray()
+		plots.values().map((plot, plot_i) => plot.data.values().map((v) => [normalizeX(v[0].valueOf()), normalizeY(v[1], plot_i)] as [number, number]).toArray()).toArray()
 	);
 
-	function mouseToIndex(mouse: [number, number]): number {
+	function mouseToIndex(mouse: [number, number], data: [number | Date, number][]): number {
 		return Math.round(mouse[0] * (data.length - 1) / width)
 	}
 
-	function mouseToGraph(mouse: [number, number]): [number, number] {
-		let i = mouseToIndex(mouse);
-
-		return [i * width / (data.length - 1),  (1 - (data[i][1] - axisY[0]) / DY) * height]
+	function mouseToGraphX(mouse: [number, number], data: [number | Date, number][]): number {
+		return mouseToIndex(mouse, data) * width / (data.length - 1);
 	}
 
+	function mouseToGraph(mouse: [number, number], data: [number | Date, number][], plot_i: number): [number, number] {
+		let i = mouseToIndex(mouse, data);
+
+		return [mouseToGraphX(mouse, data),  (1 - (data[i][1] - axisY[plot_i][0]) / DY[plot_i]) * height]
+	}
+
+	let markerPositions: ([number, number] | null)[] = $state(plots.map(_ => null));
 	let textPosition: [number, number] | null = $state(null);
-	let textAnchor: "start" | "middle" | "end" = $state("start");
+	let textAnchor: "start" | "end" = $state("start");
 	let textDy = $state("-1.2em");
-	let text0: string | null = $state(null);
-	let text1: string | null = $state(null);
+	let texts: string[] | null = $state(null);
 
 	function onmousemove(event: MouseEvent) {
 		const mouse: [number, number] = [event.offsetX, event.offsetY];
 
-		const point = data[mouseToIndex(mouse)];
+		// TODO grabbing the first may not always be the correct choice
+		const data = plots[0].data;
+		const point = data[mouseToIndex(mouse, data)];
 
-		textPosition = mouseToGraph(mouse);
-		textAnchor = textPosition[0] < width / 3 ? "start" : textPosition[0] < width * 2 / 3 ? "middle" : "end";
+		markerPositions = plots.map((plot, i) => mouseToGraph(mouse, plot.data, i));
+		const graphX = mouseToGraphX(mouse, data);
+		textAnchor = graphX < width / 2 ? "start" : "end";
+		textPosition = [graphX + (textAnchor == "start" ? 16 : -16), 0.5 * height];
 		textDy = textPosition[1] < height / 2 ? "1.2em" : "-2.2em";
 
+		texts = [];
 		if (point[0] instanceof Date) {
-			text0 = dateFormatter.format(point[0]);
+			texts.push(dateFormatter.format(point[0]));
 		} else {
-			text0 = point[0].toFixed(2);
+			texts.push(point[0].toFixed(2));
 		}
 
-		text1 = formatY(point[1]);
+		texts.push(...plots.map(plot => plot.format(plot.data[mouseToIndex(mouse, data)][1])));
 	}
 
 	function onmouseleave() { textPosition = null; }
@@ -103,18 +134,25 @@
 				/>
 			{/each}
 		{/each}
-		{#each markY as y}
-			<line x1=0 x2={width} y1={normalizeY(y)} y2={normalizeY(y)} vector-effect="non-scaling-stroke" stroke="cyan" stroke-dasharray="4 4" stroke-width="2px"/>
+		{#each plots as plot, p_i}
+			<PlotLine stroke={plot.color} data={normalizedData[p_i]}/>
+			{#each plot.markY as y}
+				<line x1=0 x2={width} y1={normalizeY(y, p_i)} y2={normalizeY(y, p_i)} vector-effect="non-scaling-stroke" stroke={plot.color} stroke-dasharray="4 4" stroke-width="2px"/>
+			{/each}
 		{/each}
-		<PlotLine stroke="red" data={normalizedData}/>
 	</svg>
 	<!--Non-scaling section-->
 	{#if textPosition}
-		<circle fill="red" stroke="palevioletred" stroke-width="0.25rem" cx={textPosition[0]} cy={textPosition[1]} r="0.6rem"/>
-		{#if text0 || text1}
+		{#each markerPositions as markerPosition, i}
+			{#if markerPosition != null}
+				<circle fill={plots[i].color} stroke={plots[i].color} stroke-opacity="0.5" stroke-width="0.5rem" cx={markerPosition[0]} cy={markerPosition[1]} r="0.3rem"/>
+			{/if}
+		{/each}
+		{#if texts != null}
 			<text y={textPosition[1]} text-anchor={textAnchor} style="stroke:black; stroke-width:0.5em; fill:white; paint-order:stroke; stroke-linejoin:round" pointer-events="none">
-				<tspan x="{textPosition[0]}" dy={textDy}>{text0}</tspan>
-				<tspan x="{textPosition[0]}" dy="1.2em">{text1}</tspan>
+				{#each texts as text, t_i}
+					<tspan x="{textPosition[0]}" dy={t_i == 0 ? textDy : "1.2em"}>{text}</tspan>
+				{/each}
 			</text>
 		{/if}
 	{/if}

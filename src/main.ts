@@ -48,6 +48,16 @@ export const no_default = (f: (event: Event) => any): (_: Event) => void => {
 	}
 }
 
+export function auto_timezone() {
+	const offset_minutes = new Date().getTimezoneOffset();
+
+	const prefix = Math.sign(-offset_minutes) >= 0 ? "+" : "-";
+	const hours = Math.floor(Math.abs(-offset_minutes) / 60);
+	const minutes = Math.abs(-offset_minutes) % 60;
+
+	return "GMT" + prefix + hours + (minutes == 0 ? "" : ":" + minutes);
+}
+
 export function get_forecast(hourly: string[], forecast_settings: ForecastSettings, location: Location): Promise<WeatherApiResponse[]> {
 	const params = {
 		latitude: location.latitude,
@@ -61,7 +71,28 @@ export function get_forecast(hourly: string[], forecast_settings: ForecastSettin
 
 	let url = "https://api.open-meteo.com/v1/forecast";
 
-	return fetchWeatherApi(url, params)
+	return fetchWeatherApi(url, params);
+}
+
+export function get_historical(hourly: string[], forecast_settings: ForecastSettings, location: Location): Promise<WeatherApiResponse[]> {
+	const start_date = new Date();
+	start_date.setDate(start_date.getDate() - forecast_settings.past_days);
+
+	const end_date = new Date();
+
+	const params = {
+		latitude: location.latitude,
+		longitude: location.longitude,
+		hourly: hourly,
+		timezone: "auto",
+		format: "flatbuffers",
+		start_date: start_date.getFullYear() + "-" + (start_date.getMonth() + 1).toString().padStart(2, "0") + "-" + (start_date.getDate()).toString().padStart(2, "0"),
+		end_date: end_date.getFullYear() + "-" + (end_date.getMonth() + 1).toString().padStart(2, "0") + "-" + (end_date.getDate()).toString().padStart(2, "0"),
+	};
+
+	let url = "https://archive-api.open-meteo.com/v1/archive";
+
+	return fetchWeatherApi(url, params);
 }
 
 export interface Stats {
@@ -115,15 +146,13 @@ export function graph_data(i: number, forecast: WeatherApiResponse): [Date, numb
 		return [];
 	}
 
-	const utcOffsetSeconds = forecast.utcOffsetSeconds();
-
 	const values = hourly.variables(i)?.valuesArray()?.values();
 
 	return values?.map((v, i) => [new Date((Number(hourly.time()) + i * hourly.interval()) * 1000), v] as [Date, number]).toArray() || [];
 }
 
-export function graph_unit(i: number, forecast: WeatherApiResponse): Unit | undefined {
-	return forecast.hourly()?.variables(i)?.unit();
+export function graph_unit(i: number, forecast: WeatherApiResponse): Unit {
+	return forecast.hourly()?.variables(i)?.unit() ?? Unit.undefined;
 }
 
 export function unit_short(unit: Unit): string {
@@ -233,8 +262,8 @@ export function* date_boundaries(forecast: WeatherApiResponse): Generator<Date> 
 
 	const utcOffsetSeconds = forecast.utcOffsetSeconds();
 
-	const start = new Date(new Date(Number(hourly.time()) * 1000 + utcOffsetSeconds).toDateString());
-	const end = new Date(Number(hourly.timeEnd()) * 1000 + utcOffsetSeconds);
+	const start = new Date(new Date((Number(hourly.time()) + utcOffsetSeconds) * 1000).toDateString());
+	const end = new Date((Number(hourly.timeEnd()) + utcOffsetSeconds) * 1000);
 
 	for (let i = 0;; ++i) {
 		const date = new Date(start);
