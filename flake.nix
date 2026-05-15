@@ -20,8 +20,8 @@
         };
 
         androidComposition = pkgs.androidenv.composeAndroidPackages {
-          platformVersions = [ "34" "35" ];
-          buildToolsVersions = [ "34.0.0" "35.0.0" ];
+          platformVersions = [ "35" "36" ];
+          buildToolsVersions = [ "35.0.0" "36.0.0" ];
           systemImageTypes = [ "google_apis_playstore" ];
           abiVersions = [ "armeabi-v7a" "arm64-v8a" ];
           includeNDK = true;
@@ -138,7 +138,7 @@
           ANDROID_NDK_ROOT = "${shared.androidComposition.androidsdk}/libexec/android-sdk/ndk-bundle";
 
           # override the aapt2 binary that gradle uses with the patched one from the sdk
-          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${shared.androidComposition.androidsdk}/libexec/android-sdk/build-tools/35.0.0/aapt2";
+          GRADLE_OPTS = "-Dorg.gradle.project.android.aapt2FromMavenOverride=${shared.androidComposition.androidsdk}/libexec/android-sdk/build-tools/36.0.0/aapt2";
         };
       });
     };

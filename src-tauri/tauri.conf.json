@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "ca.asampley.kairometer",
   "build": {
-    "beforeDevCommand": "pnpm dev && pnpm tauri icon static/icon.svg",
+    "beforeDevCommand": "npm dev && npm run tauri icon static/icon.svg",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build && pnpm tauri icon static/icon.svg",
+    "beforeBuildCommand": "npm run build && npm run tauri icon static/icon.svg",
     "frontendDist": "../build"
   },
   "app": {
