@@ -116,15 +116,15 @@
 
         devShells = {
           default = with pkgs; mkShell {
-            npmDeps = importNpmLock.buildNodeModules {
-              npmRoot = ./.;
-              nodejs = nodejs;
-            };
+            #npmDeps = importNpmLock.buildNodeModules {
+            #  npmRoot = ./.;
+            #  nodejs = nodejs;
+            #};
 
             #inputsFrom = [ self.packages.${system}.default ];
 
             nativeBuildInputs = with pkgs.pkgsBuildHost; nativeBuildInputs ++ [
-              importNpmLock.hooks.linkNodeModulesHook
+              #importNpmLock.hooks.linkNodeModulesHook
             ];
 
             buildInputs = buildInputs ++ [
