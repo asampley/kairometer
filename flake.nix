@@ -52,7 +52,6 @@
 
           # node build tools
           nodejs
-          pnpm
 
           # Linux build tools
           pkg-config
@@ -83,18 +82,35 @@
           openssl
         ];
       });
-      manifest = (nixpkgs.lib.importTOML ./Cargo.toml).package;
+      manifest = (nixpkgs.lib.importTOML src-tauri/Cargo.toml).package;
     in {
-      #packages = forAllSystems ({ pkgs, system, nativeBuildInputs, buildInputs }: {
-      #	default = pkgs.rustPlatform.buildRustPackage rec {
-      #		pname = manifest.name;
-      #		version = manifest.version;
-      #		cargoLock.lockFile = ./Cargo.lock;
-      #		src = pkgs.lib.cleanSource ./.;
+      packages = forAllSystems ({ pkgs, system, nativeBuildInputs, buildInputs, ... }: {
+        web = pkgs.buildNpmPackage (finalAttrs: {
+          pname = manifest.name + "-web";
+          version = manifest.version;
 
-      #		inherit nativeBuildInputs buildInputs;
-      #	};
-      #});
+          npmDeps = pkgs.importNpmLock { npmRoot = ./.; };
+          npmConfigHook = pkgs.importNpmLock.npmConfigHook;
+
+          nativeBuildInputs = with pkgs.pkgsBuildHost; [
+            librsvg
+          ];
+
+          installPhase = ''
+            cp -r build $out
+          '';
+
+          src = ./.;
+        });
+        #default = pkgs.rustPlatform.buildRustPackage rec {
+        #  pname = manifest.name;
+        #  version = manifest.version;
+        #  cargoLock.lockFile = ./Cargo.lock;
+        #  src = pkgs.lib.cleanSource ./.;
+
+        #  inherit nativeBuildInputs buildInputs;
+        #};
+      });
 
       devShells = forAllSystems (shared: {
         default = with shared.pkgs; mkShell rec {

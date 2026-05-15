@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "favicon": "mkdir -p static/ && rsvg-convert static/icon.svg --width 128 --height 128 --output static/favicon.png",
-    "dev": "pnpm run favicon && vite dev",
-    "build": "vite build",
+    "dev": "npm run favicon && vite dev",
+    "build": "npm run favicon && vite build",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
