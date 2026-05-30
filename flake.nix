@@ -84,6 +84,7 @@
           manifest = (lib.importTOML src-tauri/Cargo.toml).package;
         in {
         packages = {
+          default = self.packages.${system}.web;
           web = pkgs.buildNpmPackage (finalAttrs: {
             pname = manifest.name + "-web";
             version = manifest.version;
