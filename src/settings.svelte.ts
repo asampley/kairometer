@@ -122,7 +122,7 @@ export function load_graph_settings(): GraphSettings[] {
 			name: "Atmosphere",
 			plots: [
 				{
-					color: "#3D3846",
+					color: "#5E5C64",
 					variable: "surface_pressure",
 					show_rules: true,
 				},

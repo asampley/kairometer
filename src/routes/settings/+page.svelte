@@ -79,7 +79,7 @@
 						<label for={"location-" + i + "-longitude"}>Longitude</label><br>
 						<input id={"location-" + i + "-longitude"} type="text" bind:value={location.longitude} placeholder="Longitude" onblur={save_locations}>
 					</div>
-					<input type="button" value="X" onclick={() => { if (locations.length > 1) { remove_location(i) } } }>
+					<input type="button" value="&#xf1f8;" onclick={() => { if (locations.length > 1) { remove_location(i) } } }>
 				</fieldset>
 			{/each}
 			<input type="button" value="Add Location" onclick={() => add_location() }>
@@ -101,21 +101,19 @@
 			<legend>Graphs</legend>
 			{#each graph_settings as graph, g (graph)}
 				<fieldset>
+					<legend>{graph.name}</legend>
 					<input type="text" bind:value={graph.name} placeholder="Name" onblur={save_graph_settings}>
-					<input type="button" value="X" onclick={() => remove_graph_settings(g)}>
-					<fieldset>
-						<legend>Plots</legend>
-						{#each graph.plots as plot, i (plot)}
-							<fieldset class="row">
-								<input type="text" bind:value={plot.variable} placeholder="Variable" list="hourlyVariables" onblur={save_graph_settings}>
-								<input type="color" bind:value={plot.color} onblur={save_graph_settings}/>
-								<input id={"graph_" + g + "_plot_" + i + "_show_rules"} type="checkbox" bind:checked={plot.show_rules} onblur={save_graph_settings}/>
-								<label for={"graph_" + g + "_plot_" + i + "_show_rules"}>Show Rules</label>
-								<input type="button" value="X" onclick={() => remove_plot(graph, i)}>
-							</fieldset>
-						{/each}
-						<input type="button" value="Add Plot" onclick={() => add_plot(graph)}>
-					</fieldset>
+					<input type="button" value="&#xf1f8;" onclick={() => remove_graph_settings(g)}>
+					{#each graph.plots as plot, i (plot)}
+						<fieldset class="row">
+							<input type="text" bind:value={plot.variable} placeholder="Variable" list="hourlyVariables" onblur={save_graph_settings}>
+							<input type="color" bind:value={plot.color} onblur={save_graph_settings}/>
+							<input id={"graph_" + g + "_plot_" + i + "_show_rules"} type="checkbox" bind:checked={plot.show_rules} onblur={save_graph_settings}/>
+							<label for={"graph_" + g + "_plot_" + i + "_show_rules"}>Show Rules</label>
+							<input type="button" value="&#xf1f8;" onclick={() => remove_plot(graph, i)}>
+						</fieldset>
+					{/each}
+					<input type="button" value="Add Plot" onclick={() => add_plot(graph)}>
 				</fieldset>
 			{/each}
 			<input type="button" value="Add Graph" onclick={() => add_graph_settings()}>
@@ -130,7 +128,7 @@
 					<input type="text" bind:value={rule.variable} placeholder="Variable" list="hourlyVariables" onblur={save_rules}>
 					<input type="number" bind:value={rule.greater_than} placeholder="Greater Than (blank for unbounded)" onblur={save_rules}>
 					<input type="number" bind:value={rule.less_than} placeholder="Less Than (blank for unbounded)" onblur={save_rules}>
-					<input type="button" value="X" onclick={() => remove_rule(i)}>
+					<input type="button" value="&#xf1f8;" onclick={() => remove_rule(i)}>
 				</fieldset>
 			{/each}
 			<input type="button" value="Add Rule" onclick={() => add_rule("")}>

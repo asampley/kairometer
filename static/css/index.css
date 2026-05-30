@@ -1,5 +1,5 @@
 :root {
-	font-family: "Andika", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-family: "Andika", "Helvetica Neue", Helvetica, Arial, sans-serif, "FontAwesome";
 	font-size: 16px;
 	line-height: 24px;
 	font-weight: 400;
@@ -44,6 +44,7 @@ fieldset {
 
 fieldset:has(> legend) {
 	border-style: solid;
+	border-color: #646cff;
 }
 
 fieldset.row {
@@ -56,10 +57,10 @@ fieldset.row > div {
 }
 
 input,
+select,
 button {
 	border-radius: 8px;
 	border: 1px solid transparent;
-	padding: 0.6em 1.2em;
 	font-size: 1em;
 	font-weight: 500;
 	font-family: inherit;
@@ -70,15 +71,47 @@ button {
 	outline: none;
 }
 
+input[type=button],
+input[type=submit],
+input[type=text],
+input[type=number],
+select,
+button {
+	padding: 0.6em 1.2em;
+	font-size: 1em;
+	font-weight: 500;
+	font-family: inherit;
+}
+
+input[type=button],
+input[type=submit],
 button {
 	cursor: pointer;
 }
+input[type=button]:hover,
+input[type=submit]:hover,
 button:hover {
 	border-color: #396cd8;
 }
+input:focus,
+button:focus {
+	border-color: #396cd8;
+}
+input[type=button]:active,
+input[type=submit]:active,
 button:active {
 	border-color: #396cd8;
 	background-color: #0f0f0f69;
+}
+
+input[type=color] {
+	/* font-size + padding of other elements */
+	height: calc(1em + 0.6em * 2);
+	padding: 0;
+}
+
+input[value="\00f1f8"] {
+	color: deeppink;
 }
 
 @media (prefers-color-scheme: light) {
@@ -91,11 +124,14 @@ button:active {
 		color: #535bf2;
 	}
 
-	input,
+	input[type=button],
+	input[type=submit],
 	button {
 		color: #0f0f0f;
 		background-color: #ffffff;
 	}
+	input[type=button]:active,
+	input[type=submit]:active,
 	button:active {
 		background-color: #e8e8e8;
 	}

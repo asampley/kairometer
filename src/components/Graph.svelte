@@ -1,12 +1,11 @@
 <script lang="ts">
 	import PlotLine from "./PlotLine.svelte";
+	import { dateFormatter } from "../main";
 
 	let { plots, markX, ...others }: {
 		plots: { color: string, name: string, data: [number | Date, number][], markY: number[], format: (y: number) => string}[],
 		markX: { color: string, values: (number | Date)[] }[],
 	} = $props();
-
-	const dateFormatter = Intl.DateTimeFormat("en-CA", { hour12: false, month: "long", day: "numeric", "hour": "2-digit", minute: "2-digit", weekday: "short", });
 
 	let axisX: [number, number] = $derived.by(() => {
 		return plots.values().reduce(
@@ -89,13 +88,13 @@
 		return [mouseToGraphX(mouse, data),  (1 - (data[i][1] - axisY[plot_i][0]) / DY[plot_i]) * height]
 	}
 
-	let markerPositions: ([number, number] | null)[] = $state(plots.map(_ => null));
+	let markerPositions: ([number, number] | null)[] = $derived(plots.map(_ => null));
 	let textPosition: [number, number] | null = $state(null);
 	let textAnchor: "start" | "end" = $state("start");
 	let textDy = $state("-1.2em");
 	let texts: string[] | null = $state(null);
 
-	function onmousemove(event: MouseEvent) {
+	function onpointermove(event: MouseEvent) {
 		const mouse: [number, number] = [event.offsetX, event.offsetY];
 
 		// TODO grabbing the first may not always be the correct choice
@@ -105,8 +104,7 @@
 		markerPositions = plots.map((plot, i) => mouseToGraph(mouse, plot.data, i));
 		const graphX = mouseToGraphX(mouse, data);
 		textAnchor = graphX < width / 2 ? "start" : "end";
-		textPosition = [graphX + (textAnchor == "start" ? 16 : -16), 0.5 * height];
-		textDy = textPosition[1] < height / 2 ? "1.2em" : "-2.2em";
+		textPosition = [graphX + (textAnchor == "start" ? 16 : -16), mouse[1] < 0.5 * height ? height : 0];
 
 		texts = [];
 		if (point[0] instanceof Date) {
@@ -116,13 +114,16 @@
 		}
 
 		texts.push(...plots.map(plot => plot.format(plot.data[mouseToIndex(mouse, data)][1])));
+
+		textDy = textPosition[1] < height / 2 ? "1.2em" : (-0.2 - texts.length) + "em";
 	}
 
-	function onmouseleave() { textPosition = null; }
-	function onpointerleave() { textPosition = null; }
+	function onpointerleave() {
+		textPosition = null;
+	}
 </script>
 
-<svg role="presentation" style="background-color:black;" {onmousemove} {onmouseleave} {onpointerleave} bind:clientWidth={width} bind:clientHeight={height} {...others}>
+<svg role="presentation" style="background-color:black;touch-action:pinch-zoom pan-y;" {onpointermove} {onpointerleave} bind:clientWidth={width} bind:clientHeight={height} {...others}>
 	<!--Scaling section-->
 	<svg viewBox="0 0 1 1" preserveAspectRatio="none">
 		{#each markX as mark}
@@ -151,7 +152,7 @@
 		{#if texts != null}
 			<text y={textPosition[1]} text-anchor={textAnchor} style="stroke:black; stroke-width:0.5em; fill:white; paint-order:stroke; stroke-linejoin:round" pointer-events="none">
 				{#each texts as text, t_i}
-					<tspan x="{textPosition[0]}" dy={t_i == 0 ? textDy : "1.2em"}>{text}</tspan>
+					<tspan x="{textPosition[0]}" dy={t_i == 0 ? textDy : "1.2em"} pointer-events="none">{text}</tspan>
 				{/each}
 			</text>
 		{/if}

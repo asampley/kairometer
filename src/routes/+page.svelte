@@ -3,7 +3,7 @@
 	import type { Result, Stats } from "../main";
 
 	import { onMount } from "svelte";
-	import { collect_stats, date_boundaries, format_variable, get_forecast, graph_data, graph_unit, no_default } from "../main";
+	import { collect_stats, date_boundaries, dateFormatter, format_variable, get_forecast, graph_data, graph_unit, no_default } from "../main";
 	import { rules } from "../rules.svelte";
 	import { forecast_settings, graph_settings, locations } from "../settings.svelte";
 
@@ -23,7 +23,7 @@
 
 	let forecast: Result<WeatherApiResponse, any> | null = $derived(forecasts[location_i]);
 
-	let stats: Stats | null = $derived(forecast && "ok" in forecast ? collect_stats(rules, variablesArray, forecast.ok) : null);
+	let stats: Stats | null = $derived(forecast && "ok" in forecast ? collect_stats(rules, variablesArray, forecast.ok, new Date()) : null);
 	let graphs = $derived(graph_settings.flatMap(g => { return {
 		name: g.name,
 		plots: g.plots.map(p => {
@@ -76,7 +76,7 @@
 		if (stats != null && stats.violations.length > 0 && Notification.permission === "granted") {
 			var body = "Warnings:";
 			for (var violation of stats.violations) {
-				body += "\n" + violation.name;
+				body += "\n" + violation.name + " on " + dateFormatter.format(violation.start);
 			}
 			new Notification("Kairometer", { body: body, icon: "/icon.svg" });
 		}
@@ -111,7 +111,7 @@
 			<h3>Warnings</h3>
 			<ul class="warning">
 				{#each stats.violations as violation}
-					<li>{violation.name} for {violation.total_minutes} minutes.</li>
+					<li>{violation.name} on {dateFormatter.format(violation.start)}</li>
 				{/each}
 			</ul>
 		{/if}

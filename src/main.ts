@@ -7,6 +7,8 @@ import { fetchWeatherApi } from 'openmeteo';
 
 export type Result<T, E> = { ok: T } | { err: E };
 
+export const dateFormatter = Intl.DateTimeFormat("en-CA", { hour12: false, month: "long", day: "numeric", "hour": "2-digit", minute: "2-digit", weekday: "short", });
+
 export const hourlyVariables: string[] = [
 	"temperature_2m",
 	"relative_humidity_2m",
@@ -101,34 +103,49 @@ export interface Stats {
 
 export interface RuleViolation {
 	name: string,
+	start: Date,
 	total_minutes: number,
 }
 
-export function collect_stats(rules: Rule[], variables: string[], forecast: WeatherApiResponse): Stats {
+export function collect_stats(rules: Rule[], variables: string[], forecast: WeatherApiResponse, after: Date): Stats {
+	let stats: Stats = { violations: [] };
+
+	const hourly = forecast.hourly();
+
+	if (hourly == null) {
+		return stats;
+	}
+
 	const indices: Map<string, number> = variables.reduce(
 		(map, name, index) => map.set(name, index),
 		new Map(),
 	);
 
-	let stats: Stats = { violations: [] };
-
 	for (const rule of rules) {
 		const i = indices.get(rule.variable);
 
-		let violation = { name: rule.name, total_minutes: 0 };
+		let violation = { name: rule.name, start: null as Date | null, total_minutes: 0 };
 
 		if (i !== undefined) {
 			forecast.hourly()?.variables(i)?.valuesArray()?.forEach(
-				(value) => {
+				(value, i) => {
 					if ((rule.greater_than !== undefined && value > rule.greater_than)
 						|| (rule.less_than !== undefined && value < rule.less_than)
 					) {
-						violation.total_minutes += 15;
+						if (violation.start == null) {
+							const date = new Date((Number(hourly.time()) + i * hourly.interval()) * 1000);
+							if (date > after) {
+								violation.start = date;
+							} else {
+								return;
+							}
+						}
+						violation.total_minutes += hourly.interval() / 60;
 					}
 				},
 			);
 
-			if (violation?.total_minutes > 0) {
+			if (violation?.total_minutes > 0 && violation.start != null) {
 				stats.violations.push(violation);
 			}
 		} else {
