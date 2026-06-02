@@ -57,10 +57,12 @@
 	}
 
 	async function clear_page_cache() {
-		for (const key of await caches.keys()) {
-			await caches.delete(key);
+		if (confirm("Clear the following caches:\n" + (await caches.keys()).join("\n"))) {
+			for (const key of await caches.keys()) {
+				await caches.delete(key);
+			}
+			console.log("Page cache cleared");
 		}
-		console.log("Page cache cleared");
 	}
 </script>
 
