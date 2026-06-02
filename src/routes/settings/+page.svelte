@@ -57,9 +57,9 @@
 	}
 
 	async function clear_page_cache() {
-		if (confirm("Clear the following caches:\n" + (await caches.keys()).join("\n"))) {
-			for (const key of await caches.keys()) {
-				await caches.delete(key);
+		if (confirm("Clear the following caches:\n" + (await window.caches.keys()).join("\n"))) {
+			for (const key of await window.caches.keys()) {
+				await window.caches.delete(key);
 			}
 			console.log("Page cache cleared");
 		}
@@ -143,10 +143,12 @@
 			<input type="button" value="Add Rule" onclick={() => add_rule("")}>
 		</fieldset>
 	</form>
-	<form>
-		<fieldset>
-			<legend>Troubleshooting</legend>
-			<input type="button" class="destructive" value="Clear Page Cache" onclick={clear_page_cache}>
-		</fieldset>
-	</form>
+	{#if caches}
+		<form>
+			<fieldset>
+				<legend>Troubleshooting</legend>
+				<input type="button" class="destructive" value="Clear Page Cache" onclick={clear_page_cache}>
+			</fieldset>
+		</form>
+	{/if}
 </main>
