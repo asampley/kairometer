@@ -3,16 +3,13 @@
 	import type { Result, Stats } from "../main";
 
 	import { onMount } from "svelte";
-	import { collect_stats, date_boundaries, dateFormatter, format_variable, get_forecast, graph_data, graph_unit, no_default } from "../main";
+	import { collect_stats, date_boundaries, dateFormatter, format_variable, get_forecast, graph_data, graph_unit, no_default, notify } from "../main";
 	import { rules } from "../rules.svelte";
 	import { forecast_settings, graph_settings, locations } from "../settings.svelte";
 
 	import Title from "../components/Title.svelte";
 	import Nav from "../components/Nav.svelte";
 	import Graph from "../components/Graph.svelte";
-
-	// TODO service workers
-	//import "../workers.ts";
 
 	const variables = $derived(new Set(rules.map(v => v.variable)).union(new Set(graph_settings.flatMap(g => g.plots.map(p => p.variable)))));
 	const variablesArray = $derived(variables.values().toArray());
@@ -35,7 +32,7 @@
 				markY: !p.show_rules ? [] : rules
 					.values()
 					.filter(r => r.variable == p.variable)
-					.map(r => [r.greater_than, r.less_than].filter(x => x != undefined))
+					.flatMap(r => [r.greater_than, r.less_than].filter(x => x != undefined))
 					.toArray(),
 				format: (y: number) => p.variable + ": " + (forecast && "ok" in forecast ? format_variable(graph_unit(variable_i, forecast.ok))(y) : y.toString()),
 			}
@@ -74,11 +71,11 @@
 
 	$effect(() => {
 		if (stats != null && stats.violations.length > 0 && Notification.permission === "granted") {
-			var body = "Warnings:";
-			for (var violation of stats.violations) {
-				body += "\n" + violation.name + " on " + dateFormatter.format(violation.start);
-			}
-			new Notification("Kairometer", { body: body, icon: "/icon.svg" });
+			const body = stats.violations
+				.map(violation => violation.name + " on " + dateFormatter.format(violation.start))
+				.join("\n");
+
+			notify("Weather Warning", { body: body });
 		}
 	})
 
@@ -87,9 +84,9 @@
 		{ color: "green", values: [now] },
 	]);
 
-	onMount(async () => {
-		if (Notification.permission !== "denied") {
-			await Notification.requestPermission();
+	onMount(() => {
+		if (Notification && Notification.permission !== "denied" && "requestPermission" in Notification) {
+			Notification.requestPermission();
 		}
 	});
 </script>
@@ -104,6 +101,11 @@
 		{/each}
 	</select>
 
+	<form onsubmit={no_default(update_forecast)}>
+		<button type="submit"><i class="fa-solid fa-rotate"></i>Refresh Forecast</button>
+	</form>
+
+
 	{#if !forecast}
 		<p>Loading...</p>
 	{:else if 'ok' in forecast}
@@ -116,17 +118,11 @@
 			</ul>
 		{/if}
 
-		<form onsubmit={no_default(update_forecast)}>
-			<button type="submit"><i class="fa-solid fa-rotate"></i>Refresh Forecast</button>
-		</form>
-
-		{#each graphs as graph, i}
+		{#each graphs as graph}
 			<h2>{graph.name}</h2>
 			<Graph
 				plots={graph.plots}
 				{markX}
-				markY={graph.markY}
-				formatY={format_variable(graph_unit(i, forecast.ok))}
 				width="100%"
 				height="300px"
 			/>

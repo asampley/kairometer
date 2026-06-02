@@ -145,7 +145,7 @@ export function collect_stats(rules: Rule[], variables: string[], forecast: Weat
 				},
 			);
 
-			if (violation?.total_minutes > 0 && violation.start != null) {
+			if (violation?.total_minutes > 0 && violation?.start != null) {
 				stats.violations.push(violation);
 			}
 		} else {
@@ -216,6 +216,7 @@ export function unit_short(unit: Unit): string {
 		case Unit.gdd_celsius: return "GGDc";
 		case Unit.fraction: return "fraction";
 		case Unit.parts_per_million: return "ppm";
+		default: return "undefined";
 	}
 }
 
@@ -263,6 +264,7 @@ export function fixed_fractional_digits(unit: Unit): number {
 		case Unit.gdd_celsius: return 2;
 		case Unit.fraction: return 3;
 		case Unit.parts_per_million: return 0;
+		default: return 0;
 	}
 }
 
@@ -292,4 +294,11 @@ export function* date_boundaries(forecast: WeatherApiResponse): Generator<Date> 
 			break;
 		}
 	}
+}
+
+export function notify(title: string, options?: NotificationOptions) {
+	(async () => {
+		const serviceWorker = await navigator.serviceWorker.ready;
+		serviceWorker.showNotification(title, { icon: "/icon.svg", ...options });
+	})();
 }

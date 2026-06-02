@@ -3,8 +3,9 @@
 	import { dateFormatter } from "../main";
 
 	let { plots, markX, ...others }: {
-		plots: { color: string, name: string, data: [number | Date, number][], markY: number[], format: (y: number) => string}[],
+		plots: { color: string, data: [number | Date, number][], markY: number[], format: (y: number) => string}[],
 		markX: { color: string, values: (number | Date)[] }[],
+		[key: string]: any,
 	} = $props();
 
 	let axisX: [number, number] = $derived.by(() => {

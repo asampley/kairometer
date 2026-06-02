@@ -44,8 +44,7 @@ self.addEventListener('activate', (event) => {
 	event.waitUntil(deleteOldCaches());
 });
 
-// buggy on android?
-if (false) self.addEventListener('fetch', (event) => {
+self.addEventListener('fetch', (event) => {
 	// ignore POST requests etc
 	if (event.request.method !== 'GET') return;
 
