@@ -110,7 +110,8 @@ input[type=color] {
 	padding: 0;
 }
 
-input[value="\00f1f8"] {
+input[value="\00f1f8"],
+.destructive {
 	color: deeppink;
 }
 

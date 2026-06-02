@@ -55,6 +55,13 @@
 		graph.plots.splice(i, 1);
 		save_graph_settings();
 	}
+
+	async function clear_page_cache() {
+		for (const key of await caches.keys()) {
+			await caches.delete(key);
+		}
+		console.log("Page cache cleared");
+	}
 </script>
 
 <main class="container">
@@ -132,6 +139,12 @@
 				</fieldset>
 			{/each}
 			<input type="button" value="Add Rule" onclick={() => add_rule("")}>
+		</fieldset>
+	</form>
+	<form>
+		<fieldset>
+			<legend>Troubleshooting</legend>
+			<input type="button" class="destructive" value="Clear Page Cache" onclick={clear_page_cache}>
 		</fieldset>
 	</form>
 </main>
