@@ -1,10 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "kairometer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "ca.asampley.kairometer",
   "build": {
-    "beforeDevCommand": "npm dev && npm run tauri icon static/icon.svg",
+    "beforeDevCommand": "npm run dev && npm run tauri icon static/icon.svg",
     "devUrl": "http://localhost:1420",
     "beforeBuildCommand": "npm run build && npm run tauri icon static/icon.svg",
     "frontendDist": "../build"

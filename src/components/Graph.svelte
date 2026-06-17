@@ -1,10 +1,12 @@
 <script lang="ts">
 	import PlotLine from "./PlotLine.svelte";
 	import { dateFormatter } from "../main";
+	import { onMount } from "svelte";
 
-	let { plots, markX, ...others }: {
-		plots: { color: string, data: [number | Date, number][], markY: number[], format: (y: number) => string}[],
+	let { plots, markX, defaultMarkerX, ...others }: {
+		plots: { color: string, name: string, data: [number | Date, number][], markY: number[], format: (y: number) => string}[],
 		markX: { color: string, values: (number | Date)[] }[],
+		defaultMarkerX?: number | Date,
 		[key: string]: any,
 	} = $props();
 
@@ -79,52 +81,80 @@
 		return Math.round(mouse[0] * (data.length - 1) / width)
 	}
 
-	function mouseToGraphX(mouse: [number, number], data: [number | Date, number][]): number {
-		return mouseToIndex(mouse, data) * width / (data.length - 1);
+	function indexToX(i: number, data: [number | Date, number][]): number {
+		return i * width / (data.length - 1);
 	}
 
-	function mouseToGraph(mouse: [number, number], data: [number | Date, number][], plot_i: number): [number, number] {
-		let i = mouseToIndex(mouse, data);
-
-		return [mouseToGraphX(mouse, data),  (1 - (data[i][1] - axisY[plot_i][0]) / DY[plot_i]) * height]
+	function indexToY(i: number, data: [number | Date, number][], plot_i: number): number {
+		return (1 - (data[i][1] - axisY[plot_i][0]) / DY[plot_i]) * height;
 	}
 
 	let markerPositions: ([number, number] | null)[] = $derived(plots.map(_ => null));
 	let textPosition: [number, number] | null = $state(null);
 	let textAnchor: "start" | "end" = $state("start");
 	let textDy = $state("-1.2em");
-	let texts: string[] | null = $state(null);
+	let xLabel: string | null = $state(null);
+	let yLabels: [string, string][] = $state([]);
+
+	function setMarkerDefault() {
+		if (defaultMarkerX != null) {
+			var min_dist = Infinity;
+			var min_i = 0;
+
+			for (var i = 0; i < plots[0].data.length; ++i) {
+				const dist = Math.abs(Number(plots[0].data[i][0]) - Number(defaultMarkerX));
+				if (dist < min_dist) {
+					min_dist = dist;
+					min_i = i;
+				}
+			}
+
+			setMarker(min_i, true);
+		} else {
+			//textPosition = null;
+		}
+	}
+
+	function setMarker(i: number, top: boolean) {
+		markerPositions = plots.map((plot, plot_i) => [indexToX(i, plot.data), indexToY(i, plot.data, plot_i)]);
+
+		// TODO grabbing the first may not always be the correct choice
+		const data_0 = plots[0].data;
+		const x = i * width / (data_0.length - 1);
+
+		textAnchor = x < width / 2 ? "start" : "end";
+		textPosition = [x + (textAnchor == "start" ? 16 : -16), top ? 0 : height];
+
+		const point = data_0[i];
+
+		if (point[0] instanceof Date) {
+			xLabel = dateFormatter.format(point[0]);
+		} else {
+			xLabel = point[0].toFixed(2);
+		}
+
+		yLabels = plots.map(plot => [plot.name, plot.format(plot.data[i][1])]);
+
+		textDy = textPosition[1] < height / 2 ? "1.2em" : (-1.2 - yLabels.length) + "em";
+	}
 
 	function onpointermove(event: MouseEvent) {
 		const mouse: [number, number] = [event.offsetX, event.offsetY];
 
 		// TODO grabbing the first may not always be the correct choice
 		const data = plots[0].data;
-		const point = data[mouseToIndex(mouse, data)];
 
-		markerPositions = plots.map((plot, i) => mouseToGraph(mouse, plot.data, i));
-		const graphX = mouseToGraphX(mouse, data);
-		textAnchor = graphX < width / 2 ? "start" : "end";
-		textPosition = [graphX + (textAnchor == "start" ? 16 : -16), mouse[1] < 0.5 * height ? height : 0];
-
-		texts = [];
-		if (point[0] instanceof Date) {
-			texts.push(dateFormatter.format(point[0]));
-		} else {
-			texts.push(point[0].toFixed(2));
-		}
-
-		texts.push(...plots.map(plot => plot.format(plot.data[mouseToIndex(mouse, data)][1])));
-
-		textDy = textPosition[1] < height / 2 ? "1.2em" : (-0.2 - texts.length) + "em";
+		setMarker(mouseToIndex(mouse, data), mouse[1] >= 0.5 * height);
 	}
 
-	function onpointerleave() {
-		textPosition = null;
+	function onmouseleave() {
+		setMarkerDefault()
 	}
+
+	onMount(setMarkerDefault);
 </script>
 
-<svg role="presentation" style="background-color:black;touch-action:pinch-zoom pan-y;" {onpointermove} {onpointerleave} bind:clientWidth={width} bind:clientHeight={height} {...others}>
+<svg role="presentation" style="background-color:black;touch-action:pinch-zoom pan-y;" {onpointermove} {onmouseleave} bind:clientWidth={width} bind:clientHeight={height} {...others}>
 	<!--Scaling section-->
 	<svg viewBox="0 0 1 1" preserveAspectRatio="none">
 		{#each markX as mark}
@@ -150,10 +180,14 @@
 				<circle fill={plots[i].color} stroke={plots[i].color} stroke-opacity="0.5" stroke-width="0.5rem" cx={markerPosition[0]} cy={markerPosition[1]} r="0.3rem"/>
 			{/if}
 		{/each}
-		{#if texts != null}
+		{#if xLabel != null}
 			<text y={textPosition[1]} text-anchor={textAnchor} style="stroke:black; stroke-width:0.5em; fill:white; paint-order:stroke; stroke-linejoin:round" pointer-events="none">
-				{#each texts as text, t_i}
-					<tspan x="{textPosition[0]}" dy={t_i == 0 ? textDy : "1.2em"} pointer-events="none">{text}</tspan>
+				<tspan x={textPosition[0]} dy={textDy}>{xLabel}</tspan>
+				{#each yLabels as yLabel, y_i}
+					<tspan x={textPosition[0]} fill={plots[y_i].color} dy="1.2em" pointer-events="none">
+						<tspan>{plots[y_i].name + ": "}</tspan>
+						<tspan>{yLabel[1]}</tspan>
+					</tspan>
 				{/each}
 			</text>
 		{/if}

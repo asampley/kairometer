@@ -1,6 +1,6 @@
 [package]
 name = "kairometer"
-version = "0.1.0"
+version = "0.2.0"
 description = "A weather notification app with customizable rules."
 authors = ["Alex Sampley"]
 edition = "2021"

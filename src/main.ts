@@ -298,7 +298,11 @@ export function* date_boundaries(forecast: WeatherApiResponse): Generator<Date> 
 
 export function notify(title: string, options?: NotificationOptions) {
 	(async () => {
-		const serviceWorker = await navigator.serviceWorker.ready;
-		serviceWorker.showNotification(title, { icon: "/icon.svg", ...options });
+		if (serviceWorker in navigator) {
+			const serviceWorker = await navigator.serviceWorker.ready;
+			serviceWorker.showNotification(title, { icon: "/icon.svg", ...options });
+		} else {
+			new Notification(title, { icon: "/icon.svg", ...options });
+		}
 	})();
 }

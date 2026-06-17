@@ -28,13 +28,14 @@
 
 			return {
 				color: p.color,
+				name: p.variable,
 				data: forecast && "ok" in forecast ? graph_data(variable_i, forecast.ok) : [],
 				markY: !p.show_rules ? [] : rules
 					.values()
 					.filter(r => r.variable == p.variable)
 					.flatMap(r => [r.greater_than, r.less_than].filter(x => x != undefined))
 					.toArray(),
-				format: (y: number) => p.variable + ": " + (forecast && "ok" in forecast ? format_variable(graph_unit(variable_i, forecast.ok))(y) : y.toString()),
+				format: (y: number) => (forecast && "ok" in forecast ? format_variable(graph_unit(variable_i, forecast.ok))(y) : y.toString()),
 			}
 		}),
 	}}));
@@ -123,6 +124,7 @@
 			<Graph
 				plots={graph.plots}
 				{markX}
+				defaultMarkerX={now}
 				width="100%"
 				height="300px"
 			/>
