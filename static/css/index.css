@@ -103,6 +103,12 @@ button:active {
 	border-color: #396cd8;
 	background-color: #0f0f0f69;
 }
+input:disabled,
+button:disabled {
+	color: #947bff;
+	border-color: #0f0f0f69;
+	background-color: #0f0f0f69;
+}
 
 input[type=color] {
 	/* font-size + padding of other elements */
@@ -171,4 +177,16 @@ nav {
 	display: flex;
 	flex-direction: row;
 	gap: 0.5em;
+}
+
+.animation-spin {
+	animation-name: spin;
+	animation-duration: 2s;
+	animation-iteration-count: infinite;
+	animation-timing-function: ease-in-out;
+}
+
+@keyframes spin {
+	from { transform: rotate(0deg) }
+	to { transform: rotate(360deg) }
 }

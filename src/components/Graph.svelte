@@ -3,9 +3,22 @@
 	import { dateFormatter } from "../main";
 	import { onMount } from "svelte";
 
+	export interface Plot {
+		color: string,
+		name: string,
+		data: [number | Date, number][],
+		markY: number[],
+		format: (y: number) => string,
+	};
+
+	export interface MarkX {
+		color: string,
+		values: (number | Date)[],
+	};
+
 	let { plots, markX, defaultMarkerX, ...others }: {
-		plots: { color: string, name: string, data: [number | Date, number][], markY: number[], format: (y: number) => string}[],
-		markX: { color: string, values: (number | Date)[] }[],
+		plots: Plot[],
+		markX: MarkX[],
 		defaultMarkerX?: number | Date,
 		[key: string]: any,
 	} = $props();
@@ -99,7 +112,7 @@
 	function setMarkerDefault() {
 		if (defaultMarkerX != null) {
 			var min_dist = Infinity;
-			var min_i = 0;
+			var min_i = -1;
 
 			for (var i = 0; i < plots[0].data.length; ++i) {
 				const dist = Math.abs(Number(plots[0].data[i][0]) - Number(defaultMarkerX));
@@ -109,14 +122,22 @@
 				}
 			}
 
-			setMarker(min_i, true);
+			if (min_i != -1) {
+				setMarker(min_i, true);
+			}
 		} else {
 			//textPosition = null;
 		}
 	}
 
 	function setMarker(i: number, top: boolean) {
-		markerPositions = plots.map((plot, plot_i) => [indexToX(i, plot.data), indexToY(i, plot.data, plot_i)]);
+		markerPositions = plots.map((plot, plot_i) => {
+			if (!(i in plot.data)) {
+				return null;
+			}
+
+			return [indexToX(i, plot.data), indexToY(i, plot.data, plot_i)];
+		})
 
 		// TODO grabbing the first may not always be the correct choice
 		const data_0 = plots[0].data;
@@ -133,7 +154,17 @@
 			xLabel = point[0].toFixed(2);
 		}
 
-		yLabels = plots.map(plot => [plot.name, plot.format(plot.data[i][1])]);
+		yLabels = plots.map(plot => {
+			let value = null;
+
+			if (i in plot.data) {
+				value = plot.format(plot.data[i][1]);
+			} else {
+				value = "null";
+			}
+
+			return [plot.name, value];
+		});
 
 		textDy = textPosition[1] < height / 2 ? "1.2em" : (-1.2 - yLabels.length) + "em";
 	}

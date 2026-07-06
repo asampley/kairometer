@@ -1,9 +1,7 @@
-import type { WeatherApiResponse } from '@openmeteo/sdk/weather-api-response';
 import type { Rule } from './rules.svelte'
-import type { ForecastSettings, Location } from './settings.svelte';
 
 import { Unit } from '@openmeteo/sdk/unit';
-import { fetchWeatherApi } from 'openmeteo';
+import type { Forecast } from './forecasts.svelte';
 
 export type Result<T, E> = { ok: T } | { err: E };
 
@@ -60,43 +58,6 @@ export function auto_timezone() {
 	return "GMT" + prefix + hours + (minutes == 0 ? "" : ":" + minutes);
 }
 
-export function get_forecast(hourly: string[], forecast_settings: ForecastSettings, location: Location): Promise<WeatherApiResponse[]> {
-	const params = {
-		latitude: location.latitude,
-		longitude: location.longitude,
-		hourly: hourly,
-		timezone: "auto",
-		format: "flatbuffers",
-		forecast_days: forecast_settings.forecast_days,
-		past_days: forecast_settings.past_days,
-	};
-
-	let url = "https://api.open-meteo.com/v1/forecast";
-
-	return fetchWeatherApi(url, params);
-}
-
-export function get_historical(hourly: string[], forecast_settings: ForecastSettings, location: Location): Promise<WeatherApiResponse[]> {
-	const start_date = new Date();
-	start_date.setDate(start_date.getDate() - forecast_settings.past_days);
-
-	const end_date = new Date();
-
-	const params = {
-		latitude: location.latitude,
-		longitude: location.longitude,
-		hourly: hourly,
-		timezone: "auto",
-		format: "flatbuffers",
-		start_date: start_date.getFullYear() + "-" + (start_date.getMonth() + 1).toString().padStart(2, "0") + "-" + (start_date.getDate()).toString().padStart(2, "0"),
-		end_date: end_date.getFullYear() + "-" + (end_date.getMonth() + 1).toString().padStart(2, "0") + "-" + (end_date.getDate()).toString().padStart(2, "0"),
-	};
-
-	let url = "https://archive-api.open-meteo.com/v1/archive";
-
-	return fetchWeatherApi(url, params);
-}
-
 export interface Stats {
 	violations: RuleViolation[],
 }
@@ -107,12 +68,10 @@ export interface RuleViolation {
 	total_minutes: number,
 }
 
-export function collect_stats(rules: Rule[], variables: string[], forecast: WeatherApiResponse, after: Date): Stats {
+export function collect_stats(rules: Rule[], variables: string[], forecast: Forecast, after: Date): Stats {
 	let stats: Stats = { violations: [] };
 
-	const hourly = forecast.hourly();
-
-	if (hourly == null) {
+	if (forecast.data.length == 0) {
 		return stats;
 	}
 
@@ -127,20 +86,20 @@ export function collect_stats(rules: Rule[], variables: string[], forecast: Weat
 		let violation = { name: rule.name, start: null as Date | null, total_minutes: 0 };
 
 		if (i !== undefined) {
-			forecast.hourly()?.variables(i)?.valuesArray()?.forEach(
-				(value, i) => {
-					if ((rule.greater_than !== undefined && value > rule.greater_than)
-						|| (rule.less_than !== undefined && value < rule.less_than)
+			forecast.data[i].data.forEach(
+				(value, _) => {
+					if ((rule.greater_than !== undefined && value[1] > rule.greater_than)
+						|| (rule.less_than !== undefined && value[1] < rule.less_than)
 					) {
 						if (violation.start == null) {
-							const date = new Date((Number(hourly.time()) + i * hourly.interval()) * 1000);
+							const date = value[0];
 							if (date > after) {
 								violation.start = date;
 							} else {
 								return;
 							}
 						}
-						violation.total_minutes += hourly.interval() / 60;
+						violation.total_minutes += forecast.interval_seconds / 60;
 					}
 				},
 			);
@@ -154,22 +113,6 @@ export function collect_stats(rules: Rule[], variables: string[], forecast: Weat
 	}
 
 	return stats;
-}
-
-export function graph_data(i: number, forecast: WeatherApiResponse): [Date, number][] {
-	const hourly = forecast.hourly();
-
-	if (hourly === null) {
-		return [];
-	}
-
-	const values = hourly.variables(i)?.valuesArray()?.values();
-
-	return values?.map((v, i) => [new Date((Number(hourly.time()) + i * hourly.interval()) * 1000), v] as [Date, number]).toArray() || [];
-}
-
-export function graph_unit(i: number, forecast: WeatherApiResponse): Unit {
-	return forecast.hourly()?.variables(i)?.unit() ?? Unit.undefined;
 }
 
 export function unit_short(unit: Unit): string {
@@ -272,17 +215,13 @@ export function format_variable(unit: Unit): (value: number) => string {
 	return (value) => value.toFixed(fixed_fractional_digits(unit)) + " " + unit_short(unit);
 }
 
-export function* date_boundaries(forecast: WeatherApiResponse): Generator<Date> {
-	const hourly = forecast.hourly();
-
-	if (hourly === null) {
+export function* date_boundaries(forecast: Forecast): Generator<Date> {
+	if (forecast.data === null) {
 		return;
 	}
 
-	const utcOffsetSeconds = forecast.utcOffsetSeconds();
-
-	const start = new Date(new Date((Number(hourly.time()) + utcOffsetSeconds) * 1000).toDateString());
-	const end = new Date((Number(hourly.timeEnd()) + utcOffsetSeconds) * 1000);
+	const start = forecast.data[0].data[0][0];
+	const end = forecast.data[0].data[forecast.data[0].data.length - 1][0];
 
 	for (let i = 0;; ++i) {
 		const date = new Date(start);
@@ -298,7 +237,7 @@ export function* date_boundaries(forecast: WeatherApiResponse): Generator<Date> 
 
 export function notify(title: string, options?: NotificationOptions) {
 	(async () => {
-		if (serviceWorker in navigator) {
+		if ("serviceWorker" in navigator) {
 			const serviceWorker = await navigator.serviceWorker.ready;
 			serviceWorker.showNotification(title, { icon: "/icon.svg", ...options });
 		} else {

@@ -27,7 +27,13 @@ export interface Location {
 export function save(name: string, value: any): void {
 	console.log("Saved '" + name + "'");
 
-	localStorage.setItem(name, JSON.stringify(value));
+	localStorage.setItem(name, JSON.stringify(value, replacer));
+}
+
+export function clear(name: string): void {
+	console.log("Cleared '" + name + "'");
+
+	localStorage.removeItem(name);
 }
 
 export function load_locations(): Location[] {
@@ -138,4 +144,30 @@ export function load_graph_settings(): GraphSettings[] {
 
 export function save_graph_settings() {
 	save("graph_settings", graph_settings);
+}
+
+export function replacer(key: string, value: any) {
+	var _type = null;
+	var _value = null;
+
+	if (this[key] instanceof Date) {
+		_type = "Date";
+		_value = value;
+	}
+
+	if (_type == null) {
+		return value;
+	} else {
+		return { "_type": _type, "_value": _value };
+	}
+}
+
+export function reviver(_key: string, value: any) {
+	if (value instanceof Object && "_type" in value) {
+		if (value._type == "Date") {
+			return new Date(value._value);
+		}
+	} else {
+		return value;
+	}
 }
