@@ -4,6 +4,7 @@ export const graph_settings: GraphSettings[] = $state(load_graph_settings());
 
 export interface GraphSettings {
 	name: string,
+	width_css: string,
 	plots: PlotSettings[],
 }
 
@@ -104,6 +105,12 @@ export function load_graph_settings(): GraphSettings[] {
 		const loaded = JSON.parse(fromStorage);
 
 		if (loaded instanceof Array) {
+			for (const graph of loaded) {
+				graph.name = graph.name || "Name";
+				graph.width_css = graph.width_css || "max(800px, 100%)";
+				graph.plots = graph.plots || [];
+			}
+
 			return loaded;
 		}
 	}
@@ -111,6 +118,7 @@ export function load_graph_settings(): GraphSettings[] {
 	return [
 		{
 			name: "Precipitation",
+			width_css: "max(800px, 100%)",
 			plots: [
 				{
 					color: "#3584E4",
@@ -126,6 +134,7 @@ export function load_graph_settings(): GraphSettings[] {
 		},
 		{
 			name: "Atmosphere",
+			width_css: "max(800px, 100%)",
 			plots: [
 				{
 					color: "#5E5C64",

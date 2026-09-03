@@ -75,6 +75,7 @@ input[type=button],
 input[type=submit],
 input[type=text],
 input[type=number],
+input[type=range],
 select,
 button {
 	padding: 0.6em 1.2em;
@@ -85,11 +86,13 @@ button {
 
 input[type=button],
 input[type=submit],
+input[type=range],
 button {
 	cursor: pointer;
 }
 input[type=button]:hover,
 input[type=submit]:hover,
+input[type=range]:hover,
 button:hover {
 	border-color: #396cd8;
 }
@@ -184,6 +187,35 @@ nav {
 	animation-duration: 2s;
 	animation-iteration-count: infinite;
 	animation-timing-function: ease-in-out;
+}
+
+.width-100 {
+	width: 100%;
+}
+
+.graph-window {
+	position: relative;
+	width: 100%;
+	overflow-x: scroll;
+}
+
+.graph-position-select {
+	box-sizing: border-box;
+	width: 100%;
+}
+
+.overlay-anchor {
+	position: relative;
+}
+
+.overlay {
+	position: absolute;
+	box-sizing: border-box;
+	top: 0;
+	left: 0;
+	padding: 1em;
+	width: 100%;
+	height: 100%;
 }
 
 @keyframes spin {

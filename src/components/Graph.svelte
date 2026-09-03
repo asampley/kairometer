@@ -1,7 +1,7 @@
 <script lang="ts">
-	import PlotLine from "./PlotLine.svelte";
 	import { dateFormatter } from "../main";
-	import { onMount } from "svelte";
+	import GraphLegend from "./GraphLegend.svelte";
+	import PlotLine from "./PlotLine.svelte";
 
 	export interface Plot {
 		color: string,
@@ -16,10 +16,12 @@
 		values: (number | Date)[],
 	};
 
-	let { plots, markX, defaultMarkerX, ...others }: {
+	let { plots, markX, defaultMarkerX, enablePointerEvents, markerHoverI = $bindable(), ...others }: {
 		plots: Plot[],
 		markX: MarkX[],
-		defaultMarkerX?: number | Date,
+		defaultMarkerX?: number | null,
+		markerHoverI?: number | null,
+		enablePointerEvents?: boolean,
 		[key: string]: any,
 	} = $props();
 
@@ -102,90 +104,72 @@
 		return (1 - (data[i][1] - axisY[plot_i][0]) / DY[plot_i]) * height;
 	}
 
-	let markerPositions: ([number, number] | null)[] = $derived(plots.map(_ => null));
-	let textPosition: [number, number] | null = $state(null);
-	let textAnchor: "start" | "end" = $state("start");
-	let textDy = $state("-1.2em");
-	let xLabel: string | null = $state(null);
-	let yLabels: [string, string][] = $state([]);
+	let markerTop = $state(true);
+	let markerData = $derived.by(() => {
+		const i = (markerHoverI == null ? defaultMarkerX : markerHoverI);
 
-	function setMarkerDefault() {
-		if (defaultMarkerX != null) {
-			var min_dist = Infinity;
-			var min_i = -1;
-
-			for (var i = 0; i < plots[0].data.length; ++i) {
-				const dist = Math.abs(Number(plots[0].data[i][0]) - Number(defaultMarkerX));
-				if (dist < min_dist) {
-					min_dist = dist;
-					min_i = i;
-				}
-			}
-
-			if (min_i != -1) {
-				setMarker(min_i, true);
-			}
-		} else {
-			//textPosition = null;
+		if (i == null) {
+			return null;
 		}
-	}
 
-	function setMarker(i: number, top: boolean) {
-		markerPositions = plots.map((plot, plot_i) => {
-			if (!(i in plot.data)) {
-				return null;
-			}
-
-			return [indexToX(i, plot.data), indexToY(i, plot.data, plot_i)];
-		})
-
-		// TODO grabbing the first may not always be the correct choice
 		const data_0 = plots[0].data;
 		const x = i * width / (data_0.length - 1);
 
-		textAnchor = x < width / 2 ? "start" : "end";
-		textPosition = [x + (textAnchor == "start" ? 16 : -16), top ? 0 : height];
+		const anchorToStart = x < width / 2;
 
 		const point = data_0[i];
 
-		if (point[0] instanceof Date) {
-			xLabel = dateFormatter.format(point[0]);
-		} else {
-			xLabel = point[0].toFixed(2);
-		}
+		return {
+			textAnchor: anchorToStart ? "start" : "end",
+			textPosition: [x + (anchorToStart ? 16 : -16), markerTop ? 0 : height] as [number, number],
+			xLabel: point[0] instanceof Date ? dateFormatter.format(point[0]) : point[0].toFixed(2),
+			yLabels: plots.map(plot => {
+				let value = null;
 
-		yLabels = plots.map(plot => {
-			let value = null;
+				if (i in plot.data) {
+					value = plot.format(plot.data[i][1]);
+				} else {
+					value = "null";
+				}
 
-			if (i in plot.data) {
-				value = plot.format(plot.data[i][1]);
-			} else {
-				value = "null";
-			}
+				return {
+					name: plot.name,
+					value: value,
+					color: plot.color,
+				};
+			}),
+			textDy: markerTop ? "1.2em" : (-1.2 - plots.length) + "em",
 
-			return [plot.name, value];
-		});
+			markerPositions: plots.map((plot, plot_i) => {
+				if (!(i in plot.data)) {
+					return null;
+				}
 
-		textDy = textPosition[1] < height / 2 ? "1.2em" : (-1.2 - yLabels.length) + "em";
-	}
+				return [indexToX(i, plot.data), indexToY(i, plot.data, plot_i)];
+			}),
+		};
+	});
 
 	function onpointermove(event: MouseEvent) {
-		const mouse: [number, number] = [event.offsetX, event.offsetY];
+		if (enablePointerEvents) {
+			const mouse: [number, number] = [event.offsetX, event.offsetY];
 
-		// TODO grabbing the first may not always be the correct choice
-		const data = plots[0].data;
+			// TODO grabbing the first may not always be the correct choice
+			const data = plots[0].data;
 
-		setMarker(mouseToIndex(mouse, data), mouse[1] >= 0.5 * height);
+			markerHoverI = mouseToIndex(mouse, data);
+			markerTop = mouse[1] >= 0.5 * height;
+		}
 	}
 
-	function onmouseleave() {
-		setMarkerDefault()
+	function onpointerleave() {
+		if (enablePointerEvents) {
+			markerHoverI = null;
+		}
 	}
-
-	onMount(setMarkerDefault);
 </script>
 
-<svg role="presentation" style="background-color:black;touch-action:pinch-zoom pan-y;" {onpointermove} {onmouseleave} bind:clientWidth={width} bind:clientHeight={height} {...others}>
+<svg role="presentation" style="background-color:black;touch-action:pinch-zoom pan-y pan-x;" bind:clientWidth={width} bind:clientHeight={height} {onpointermove} {onpointerleave} {...others}>
 	<!--Scaling section-->
 	<svg viewBox="0 0 1 1" preserveAspectRatio="none">
 		{#each markX as mark}
@@ -205,22 +189,18 @@
 		{/each}
 	</svg>
 	<!--Non-scaling section-->
-	{#if textPosition}
-		{#each markerPositions as markerPosition, i}
+	{#if markerData}
+		{#each markerData.markerPositions as markerPosition, i}
 			{#if markerPosition != null}
 				<circle fill={plots[i].color} stroke={plots[i].color} stroke-opacity="0.5" stroke-width="0.5rem" cx={markerPosition[0]} cy={markerPosition[1]} r="0.3rem"/>
 			{/if}
 		{/each}
-		{#if xLabel != null}
-			<text y={textPosition[1]} text-anchor={textAnchor} style="stroke:black; stroke-width:0.5em; fill:white; paint-order:stroke; stroke-linejoin:round" pointer-events="none">
-				<tspan x={textPosition[0]} dy={textDy}>{xLabel}</tspan>
-				{#each yLabels as yLabel, y_i}
-					<tspan x={textPosition[0]} fill={plots[y_i].color} dy="1.2em" pointer-events="none">
-						<tspan>{plots[y_i].name + ": "}</tspan>
-						<tspan>{yLabel[1]}</tspan>
-					</tspan>
-				{/each}
-			</text>
-		{/if}
+		<GraphLegend
+			textPosition={markerData.textPosition}
+			textAnchor={markerData.textAnchor}
+			textDy={markerData.textDy}
+			xLabel={markerData.xLabel}
+			yLabels={markerData.yLabels}
+		/>
 	{/if}
 </svg>

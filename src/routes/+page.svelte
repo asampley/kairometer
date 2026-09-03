@@ -2,12 +2,13 @@
 	import type { Stats } from "../main";
 
 	import { onMount } from "svelte";
-	import { collect_stats, date_boundaries, dateFormatter, format_variable, no_default, notify } from "../main";
+	import { collect_stats, date_boundaries, dateFormatter, format_variable, index_nearest, no_default, notify } from "../main";
 	import { rules } from "../rules.svelte";
 	import { graph_settings, locations } from "../settings.svelte";
 	import { forecasts, graph_variable_index, save_forecasts, update_forecast, type Forecast } from "../forecasts.svelte";
 
 	import Graph, { type MarkX, type Plot } from "../components/Graph.svelte";
+	//import GraphLegend from "../components/GraphLegend.svelte";
 
 	// Save forecasts as soon as they change
 	$effect(() => save_forecasts());
@@ -19,7 +20,26 @@
 
 	let forecast: Forecast | null = $derived(forecasts[location_i]);
 
-	let forecast_derived: { stats: Stats, markX: MarkX[], graphs: { name: string, plots: Plot[] }[] } | null = $state(null);
+	let forecast_derived: { stats: Stats, markX: MarkX[], graphs: { name: string, width_css: string, plots: Plot[] }[] } | null = $state(null);
+
+	function scroll_graph(id: string, proportion: number) {
+		const graph = document.querySelector("#" + id);
+		if (graph) {
+			graph.scrollTo({
+				left: proportion * (graph.scrollWidth - graph.clientWidth),
+			});
+		} else {
+			console.warn("Graph not found for scrolling");
+		}
+	}
+
+	function proportion(min: number, value: number, max: number): number {
+		return (value - min) / (max - min);
+	}
+
+	function graph_scroller_id(i: number): string {
+		return "graph_scroller_" + i;
+	}
 
 	$effect(() => {
 		if (!forecast) {
@@ -34,6 +54,7 @@
 					]),
 					graphs: graph_settings.flatMap(g => { return {
 						name: g.name,
+						width_css: g.width_css,
 						plots: g.plots.map(p => {
 							const variable_i = graph_variable_index(p.variable, forecast);
 
@@ -65,6 +86,29 @@
 	});
 
 	let now = $state(new Date());
+	let markerX: (number | null)[] = $state(default_marker_x());
+	let markerHoverI: (number | null)[] = $state(graph_settings.map(_ => null));
+
+	function on_location_change(location_i: number) {
+		markerX = default_marker_x();
+
+		graph_settings.forEach((_, i) => {
+			if (forecast == null) return null;
+			const index = index_nearest(forecast, new Date());
+			if (index == null) return null;
+			scroll_graph(graph_scroller_id(i), proportion(0, index, forecast.data[0].data.length - 1))
+		});
+	}
+
+	function default_marker_x() {
+		return graph_settings.map(_ => {
+			if (forecast == null) return null;
+
+			return index_nearest(forecast, new Date());
+		});
+	}
+
+	$effect(() => on_location_change(location_i));
 
 	let refresh: boolean = $state(false);
 	let forecast_error: any | null = $state(null);
@@ -133,22 +177,28 @@
 	</div>
 {/if}
 
-{#if forecast != null && forecast_derived != null && forecast_derived.stats.violations.length > 0}
+{#if forecast != null && forecast_derived != null}
 	<p>Last forecast: { dateFormatter.format(forecast.time) }</p>
-	<h3>Warnings</h3>
-	<ul class="warning">
-		{#each forecast_derived.stats.violations as violation}
-			<li>{violation.name} on {dateFormatter.format(violation.start)}</li>
-		{/each}
-	</ul>
-	{#each forecast_derived.graphs as graph}
+	{#if forecast_derived.stats.violations.length > 0}
+		<h3>Warnings</h3>
+		<ul class="warning">
+			{#each forecast_derived.stats.violations as violation}
+				<li>{violation.name} on {dateFormatter.format(violation.start)}</li>
+			{/each}
+		</ul>
+	{/if}
+	{#each forecast_derived.graphs as graph, g_i}
 		<h2>{graph.name}</h2>
-		<Graph
-			plots={graph.plots}
-			markX={forecast_derived.markX}
-			defaultMarkerX={now}
-			width="100%"
-			height="300px"
-		/>
+		<div id={graph_scroller_id(g_i)} class="graph-window">
+			<Graph
+				plots={graph.plots}
+				markX={forecast_derived.markX}
+				defaultMarkerX={markerX[g_i]}
+				width={graph.width_css}
+				bind:markerHoverI={markerHoverI[g_i]}
+				height="300px"
+			/>
+		</div>
+		<input type="range" min="0" max={graph.plots[0].data.length-1} bind:value={markerX[g_i]} class="graph-position-select" oninput={event => scroll_graph(graph_scroller_id(g_i), proportion(event.target.min, event.target.value, event.target.max))}/>
 	{/each}
 {/if}

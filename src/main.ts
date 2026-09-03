@@ -235,6 +235,25 @@ export function* date_boundaries(forecast: Forecast): Generator<Date> {
 	}
 }
 
+export function index_nearest(forecast: Forecast, date: Date): number | null {
+	var min_dist = Infinity;
+	var min_i = null;
+
+	for (var i = 0; i < forecast.data[0].data.length; ++i) {
+		const dist = Math.abs(Number(forecast.data[0].data[i][0]) - Number(date));
+		if (dist < min_dist) {
+			min_dist = dist;
+			min_i = i;
+		}
+	}
+
+	if (min_i != -1) {
+		return min_i;
+	} else {
+		return null;
+	}
+}
+
 export function notify(title: string, options?: NotificationOptions) {
 	(async () => {
 		if ("serviceWorker" in navigator) {
